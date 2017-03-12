@@ -3,14 +3,6 @@
 import maya.OpenMayaUI as omui
 from Qt import QtCore, QtGui, QtWidgets
 
-import Qt
-if Qt.__binding__ == 'PySide2':
-    import pyside2uic as pysideuic
-    from shiboken2 import wrapInstance
-elif Qt.__binding__ == 'PySide':
-    import pysideuic
-    from shiboken import wrapInstance
-
 
 __all__ = [
     'maya_main_window',
@@ -20,8 +12,13 @@ __all__ = [
 
 
 def maya_main_window():
-    main_window_ptr = omui.MQtUtil.mainWindow()
-    return wrapInstance(long(main_window_ptr), QtWidgets.QWidget)
+    """
+    Return Mayas main window
+    """
+    for obj in QtWidgets.qApp.topLevelWidgets():
+        if obj.objectName() == 'MayaWindow':
+            return obj
+    raise RuntimeError('Could not find MayaWindow instance')
 
 
 
