@@ -125,10 +125,8 @@ class SearchWindowBase(QtWidgets.QDialog):
         # whether this window closes when it loses focus
         self.closeOnLoseFocus = True
 
-        # set basic window parameters like size and display flags
-        self.setWindowSettings()
         # build the core ui of the window, shared by all subclasses
-        self.buildBaseUi()
+        self.setupUi(self)
         # register for custom event filter
         self.installEventFilter(self)
 
@@ -190,31 +188,6 @@ class SearchWindowBase(QtWidgets.QDialog):
         except:
             return False
 
-    def setWindowSettings(self):
-        """
-        Set basic window settings like its size and display flags
-        """
-        self.resize(300, 400)
-        self.setWindowFlags(QtCore.Qt.Tool | QtCore.Qt.FramelessWindowHint)
-        self.setSizeGripEnabled(True)
-
-    def buildBaseUi(self):
-        self.verticalLayout = QtWidgets.QVBoxLayout(self)
-        self.verticalLayout.setSpacing(8)
-        self.verticalLayout.setContentsMargins(10, 10, 10, 10)
-
-        # search query input field
-        self.inputField = QtWidgets.QLineEdit(self)
-        self.inputField.setMaxLength(512)
-        self.verticalLayout.addWidget(self.inputField)
-
-        # results list view
-        self.listView = QtWidgets.QListView(self)
-        self.listView.setAlternatingRowColors(True)
-        self.listView.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
-        self.listView.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
-        self.verticalLayout.addWidget(self.listView)
-
     def inputChanged(self, text):
         self.searchModel.setQuery(text)
 
@@ -229,3 +202,27 @@ class SearchWindowBase(QtWidgets.QDialog):
         self.searchModel.forceUpdateResults()
         super(SearchWindowBase, self).show()
         self.activateWindow()
+
+    def setupUi(self, parent):
+        """
+        Build the UI for this window
+        """
+        self.resize(300, 400)
+        self.setWindowFlags(QtCore.Qt.Tool | QtCore.Qt.FramelessWindowHint)
+        self.setSizeGripEnabled(True)
+
+        self.verticalLayout = QtWidgets.QVBoxLayout(parent)
+        self.verticalLayout.setSpacing(8)
+        self.verticalLayout.setContentsMargins(10, 10, 10, 10)
+
+        # search query input field
+        self.inputField = QtWidgets.QLineEdit(parent)
+        self.inputField.setMaxLength(512)
+        self.verticalLayout.addWidget(self.inputField)
+
+        # results list view
+        self.listView = QtWidgets.QListView(parent)
+        self.listView.setAlternatingRowColors(True)
+        self.listView.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
+        self.listView.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
+        self.verticalLayout.addWidget(self.listView)
