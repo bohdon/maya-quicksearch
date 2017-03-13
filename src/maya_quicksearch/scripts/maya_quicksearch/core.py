@@ -39,29 +39,45 @@ class SearchModelBase(QtCore.QAbstractListModel):
         # the current list of results
         self.results = []
 
-    def index(self, row, column=0, parent=None):
+    def index(self, row, column=0, parent=None): # override
         return self.createIndex(row, column)
 
-    def parent(self, index=None):
+    def parent(self, index=None): # override
         return QtCore.QModelIndex()
 
-    def rowCount(self, parent=None):
+    def rowCount(self, parent=None): # override
         return self.numItemsDisplayed
 
-    def columnCount(self, parent=None):
+    def columnCount(self, parent=None): # override
         return 1
 
-    def data(self, index, role=QtCore.Qt.DisplayRole):
+    def data(self, index, role=QtCore.Qt.DisplayRole): # override
         if not index.isValid():
             return
         if index.row() >= self.rowCount() or index.row() < 0:
             return
-        if role == QtCore.Qt.DisplayRole:
-            return self.getItemDisplayRoleData(index)
-    def canFetchMore(self, parent):
+        return self.getItemData(index, role)
+
+    def getItemData(self, index, role=QtCore.Qt.DisplayRole):
+        """
+        Return data for the item for the given role.
+        The index has already been validated and does not need
+        to be checked in subclasses.
+        """
+        raise NotImplementedError
+
+    def getStatusText(self):
+        """
+        Return a text string containing information about the current
+        search results. Returns the length of the results by default.
+        Override in subclass to add more customized information
+        """
+        return len(self.results)
+
+    def canFetchMore(self, parent): # override
         return self.numItemsDisplayed < len(self.results)
 
-    def fetchMore(self, parent):
+    def fetchMore(self, parent): # override
         numRemaining = len(self.results) - self.numItemsDisplayed
         fetchCount = min(self.numItemsToFetch, numRemaining)
         self.beginInsertRows(QtCore.QModelIndex(), self.numItemsDisplayed, self.numItemsDisplayed + fetchCount)
@@ -80,9 +96,9 @@ class SearchModelBase(QtCore.QAbstractListModel):
         """
         Refreshes the current results.
         """
-        self._updateResultsInternal()
+        self._updateResultsInternal(True)
 
-    def _updateResultsInternal(self):
+    def _updateResultsInternal(self, forceEmitChange=False):
         """
         Update the current list of results by calling _updateResults.
 
@@ -93,15 +109,9 @@ class SearchModelBase(QtCore.QAbstractListModel):
             self.results = []
         else:
             self._updateResults()
-        if self.results != lastResults:
+        if self.results != lastResults or forceEmitChange:
             self.numItemsDisplayed = min(len(self.results), self.numItemsInitiallyDisplayed)
             self.dataChanged.emit(QtCore.QModelIndex(), QtCore.QModelIndex(), None)
-
-    def getItemDisplayRoleData(self, index):
-        """
-        Return the DisplayRole data for the item at the given index
-        """
-        raise NotImplementedError
 
     def _updateResults(self):
         """
@@ -125,18 +135,23 @@ class SearchWindowBase(QtWidgets.QDialog):
         # whether this window closes when it loses focus
         self.closeOnLoseFocus = True
 
-        # build the core ui of the window, shared by all subclasses
-        self.setupUi(self)
         # register for custom event filter
         self.installEventFilter(self)
 
+        # build the core ui of the window, shared by all subclasses
+        self.setupUi(self)
+        
+        # disable the options button by default,
+        # enable this and build a ui parented to self.optionsWidget in subclasses if desired
+        self.optionsBtn.setVisible(False)
+        self.optionsBtn.toggled.connect(self.optionsWidget.setVisible)
+
         # create search model and connect it to the list view
         self.searchModel = self.getNewSearchModel()
+        self.searchModel.dataChanged.connect(self.updateStatusLabel)
         self.listView.setModel(self.searchModel)
-
-        # connect search field to the model
-        self.inputField.textChanged.connect(self.inputChanged)
-        # self.searchModel.dataChanged.connect(self.updateStatus)
+        # connect input field to the search query
+        self.inputField.textChanged.connect(self.searchModel.setQuery)
 
         # QtCore.QObject.connect(self.settingsButton, QtCore.SIGNAL("toggled(bool)"), self.settings.setVisible)
         # QtCore.QMetaObject.connectSlotsByName(self)
@@ -160,7 +175,7 @@ class SearchWindowBase(QtWidgets.QDialog):
         """
         raise NotImplementedError
 
-    def eventFilter(self, obj, event):
+    def eventFilter(self, obj, event): # override
         t = event.type()
 
         if self.dragAnywhere:
@@ -188,10 +203,7 @@ class SearchWindowBase(QtWidgets.QDialog):
         except:
             return False
 
-    def inputChanged(self, text):
-        self.searchModel.setQuery(text)
-
-    def show(self):
+    def show(self): # override
         """
         Reset search model and show the window
         """
@@ -203,26 +215,63 @@ class SearchWindowBase(QtWidgets.QDialog):
         super(SearchWindowBase, self).show()
         self.activateWindow()
 
+    def updateStatusLabel(self):
+        self.statusLabel.setText(str(self.searchModel.getStatusText()))
+
     def setupUi(self, parent):
         """
         Build the UI for this window
         """
-        self.resize(300, 400)
+        self.resize(380, 500)
         self.setWindowFlags(QtCore.Qt.Tool | QtCore.Qt.FramelessWindowHint)
         self.setSizeGripEnabled(True)
 
         self.verticalLayout = QtWidgets.QVBoxLayout(parent)
         self.verticalLayout.setSpacing(8)
         self.verticalLayout.setContentsMargins(10, 10, 10, 10)
+        self.verticalLayout.setObjectName("verticalLayout")
+
+        # title bar HBox layout
+        self.titleLayout = QtWidgets.QHBoxLayout(parent)
+        self.verticalLayout.addLayout(self.titleLayout)
+        # title text to replace frameless window title
+        self.titleLabel = QtWidgets.QLabel(parent)
+        self.titleLabel.setObjectName("titleLabel")
+        self.titleLayout.addWidget(self.titleLabel)
+        # options button
+        self.optionsBtn = QtWidgets.QPushButton(parent)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
+        sizePolicy.setHorizontalStretch(0)
+        self.optionsBtn.setSizePolicy(sizePolicy)
+        self.optionsBtn.setMaximumSize(QtCore.QSize(30, 30))
+        self.optionsBtn.setCheckable(True)
+        self.optionsBtn.setText('...')
+        self.optionsBtn.setVisible(False)
+        self.optionsBtn.setObjectName("optionsBtn")
+        self.titleLayout.addWidget(self.optionsBtn)
 
         # search query input field
         self.inputField = QtWidgets.QLineEdit(parent)
         self.inputField.setMaxLength(512)
+        self.inputField.setObjectName("inputField")
         self.verticalLayout.addWidget(self.inputField)
 
-        # results list view
+        # selectable list view for showing all results
         self.listView = QtWidgets.QListView(parent)
         self.listView.setAlternatingRowColors(True)
         self.listView.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
         self.listView.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
+        self.listView.setObjectName("listView")
         self.verticalLayout.addWidget(self.listView)
+
+        # options widget that will contain a customizeable ui
+        # designed to be unique for each search window
+        self.optionsWidget = QtWidgets.QWidget(parent)
+        self.optionsWidget.setVisible(False)
+        self.optionsWidget.setObjectName("optionsWidget")
+        self.verticalLayout.addWidget(self.optionsWidget)
+
+        # status text for displaying result count or other info
+        self.statusLabel = QtWidgets.QLabel(parent)
+        self.statusLabel.setObjectName("statusLabel")
+        self.verticalLayout.addWidget(self.statusLabel)
