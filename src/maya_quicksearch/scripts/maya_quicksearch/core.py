@@ -1,6 +1,5 @@
 
 
-import maya.OpenMayaUI as omui
 from Qt import QtCore, QtGui, QtWidgets
 
 
