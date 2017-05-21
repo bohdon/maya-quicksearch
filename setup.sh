@@ -1,5 +1,6 @@
 #! /bin/bash
 
+PACKAGE_NAME="maya_quicksearch"
 
 
 if [[ ! "$MAYA_MODULES_INSTALL_PATH" ]]; then
@@ -17,8 +18,8 @@ fi
 
 build() {
     mkdir -p build
-    cp -R src/maya_quicksearch build/
-    cp -R src/maya_quicksearch.mod build/
+    cp -R src/$PACKAGE_NAME build/
+    cp -R src/$PACKAGE_NAME.mod build/
 }
 
 clean() {
@@ -28,21 +29,21 @@ clean() {
 dev() {
     uninstall
     clean
-    link `pwd`/src/maya_quicksearch.mod $MAYA_MODULES_INSTALL_PATH/maya_quicksearch.mod
-    link `pwd`/src/maya_quicksearch $MAYA_MODULES_INSTALL_PATH/maya_quicksearch
+    link `pwd`/src/$PACKAGE_NAME.mod $MAYA_MODULES_INSTALL_PATH/$PACKAGE_NAME.mod
+    link `pwd`/src/$PACKAGE_NAME $MAYA_MODULES_INSTALL_PATH/$PACKAGE_NAME
 }
 
 install() {
     uninstall
     clean
     build
-    cp -v build/maya_quicksearch.mod $MAYA_MODULES_INSTALL_PATH/maya_quicksearch.mod
-    cp -Rv build/maya_quicksearch $MAYA_MODULES_INSTALL_PATH/maya_quicksearch
+    cp -v build/$PACKAGE_NAME.mod $MAYA_MODULES_INSTALL_PATH/$PACKAGE_NAME.mod
+    cp -Rv build/$PACKAGE_NAME $MAYA_MODULES_INSTALL_PATH/$PACKAGE_NAME
 }
 
 uninstall() {
-    rm -v $MAYA_MODULES_INSTALL_PATH/maya_quicksearch.mod
-    rm -Rv $MAYA_MODULES_INSTALL_PATH/maya_quicksearch
+    rm -v $MAYA_MODULES_INSTALL_PATH/$PACKAGE_NAME.mod
+    rm -Rv $MAYA_MODULES_INSTALL_PATH/$PACKAGE_NAME
 }
 
 
