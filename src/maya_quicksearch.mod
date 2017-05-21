@@ -1,1 +1,0 @@
-+ maya-quicksearch 1.0 ./maya_quicksearch

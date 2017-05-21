@@ -1,6 +1,6 @@
 #! /bin/bash
 
-PACKAGE_NAME="maya_quicksearch"
+PACKAGE_NAME="quicksearch"
 
 
 if [[ ! "$MAYA_MODULES_INSTALL_PATH" ]]; then
